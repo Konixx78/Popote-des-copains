@@ -31,7 +31,13 @@ Hébergement : **Netlify** · Données, comptes et photos : **Supabase** · Lect
 Dans `js/config.js`, renseigne `supabaseUrl` et `supabaseAnonKey`.
 (Laissés vides, l'app tourne en mode démo, données dans le navigateur.)
 
-### 3. Netlify
+### 3. Hébergement
+**Option gratuite sans badge : GitHub Pages** (recommandé)
+1. Dépôt GitHub public → **Settings → Pages** → *Deploy from a branch* → branche `main`, dossier `/ (root)` → **Save**.
+2. L'adresse s'affiche après 1-2 min : `https://ton-pseudo.github.io/nom-du-depot/`.
+3. Mets cette adresse dans Supabase (**Authentication → URL Configuration** : *Site URL* et *Redirect URLs*).
+
+**Ou Netlify** (affiche un badge « Powered by Netlify » sur l'offre gratuite)
 La lecture de photos utilise une *Edge Function* : déploie via Git (GitHub → Netlify) ou avec `netlify deploy`, pas par simple glisser-déposer.
 1. Pousse ce dossier sur un dépôt GitHub, puis **Add new site → Import from Git**. Pas de commande de build, dossier publié : `.`
 2. **Site configuration → Environment variables** :

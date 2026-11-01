@@ -405,6 +405,9 @@ function createLocalBackend() {
 }
 
 /* ---------------- Stockage : Supabase ---------------- */
+// Adresse de l'app, même dans un sous-dossier (ex. GitHub Pages : https://pseudo.github.io/popote-des-copains/)
+const appUrl = () => location.origin + location.pathname.replace(/[^/]*$/, "");
+
 function createSupabaseBackend() {
   const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
   const BUCKET = "recipe-photos";
@@ -430,11 +433,11 @@ function createSupabaseBackend() {
       user = d.user; return { id: user.id, display_name: user.user_metadata?.display_name || user.email };
     },
     async signUp(email, password, display_name) {
-      const d = check(await sb.auth.signUp({ email, password, options: { data: { display_name }, emailRedirectTo: location.origin } }));
+      const d = check(await sb.auth.signUp({ email, password, options: { data: { display_name }, emailRedirectTo: appUrl() } }));
       if (!d.session) return null; // confirmation par e-mail requise
       user = d.user; return { id: user.id, display_name };
     },
-    async resetPassword(email) { check(await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin })); },
+    async resetPassword(email) { check(await sb.auth.resetPasswordForEmail(email, { redirectTo: appUrl() })); },
     async updatePassword(password) { check(await sb.auth.updateUser({ password })); },
     async signOut() { await sb.auth.signOut(); user = null; },
     async listRecipes() { return check(await sb.from("recipes").select("*").order("title")); },
