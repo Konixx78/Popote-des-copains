@@ -1,4 +1,4 @@
-# Carnet de cuisine
+# La Popote des Copains
 
 App web de recettes perso, partagées entre les membres (connexion par e-mail + mot de passe).
 Hébergement : **Netlify** · Données, comptes et photos : **Supabase** · Lecture des photos/textes : **API Claude**.

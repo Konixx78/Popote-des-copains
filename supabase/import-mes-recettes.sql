@@ -1,5 +1,5 @@
 -- =========================================================
---  Import de mes 15 recettes dans Carnet de cuisine
+--  Import de mes 15 recettes dans La Popote des Copains
 --  1. Crée d'abord ton compte dans l'app (Créer un compte).
 --  2. Remplace ton-email@exemple.fr ci-dessous par l'e-mail de ce compte.
 --  3. Supabase > SQL Editor > New query > colle ce fichier > Run.

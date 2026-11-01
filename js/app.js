@@ -1,5 +1,5 @@
 /* =========================================================
-   Carnet de cuisine — application (sans étape de build)
+   La Popote des Copains — application (sans étape de build)
    Deux modes :
    - Supabase (config.js renseigné) : comptes, partage entre membres
    - Démo (config vide)             : tout reste dans ce navigateur
@@ -9,7 +9,7 @@
 
 const CFG = window.APP_CONFIG || {};
 const CATEGORIES = ["Entrée", "Plat", "Accompagnement", "Dessert", "Apéro", "Boisson", "Sauce", "Autre"];
-const APP_NAME = CFG.appName || "Carnet de cuisine";
+const APP_NAME = CFG.appName || "La Popote des Copains";
 
 /* ---------------- Utilitaires ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -873,7 +873,7 @@ function viewAuth() {
   const up = state.authTab === "up", forgot = state.authTab === "forgot";
   const canSignup = CFG.allowSignup !== false;
   return `<main class="wrap"><div class="auth">
-    <div><h1>${esc(APP_NAME)}</h1><p>Les recettes de la famille, au même endroit.</p></div>
+    <div><h1>${esc(APP_NAME)}</h1><p>Les recettes des copains, au même endroit.</p></div>
     ${!forgot && canSignup ? `<div class="seg"><button class="${!up ? "on" : ""}" data-act="authtab" data-v="in">Se connecter</button><button class="${up ? "on" : ""}" data-act="authtab" data-v="up">Créer un compte</button></div>` : ""}
     <form class="form" id="authform" style="margin:0">
       ${up ? `<div class="field"><label for="a-name">Ton prénom</label><input class="input" id="a-name" required autocomplete="given-name"></div>` : ""}
