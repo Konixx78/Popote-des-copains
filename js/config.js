@@ -4,5 +4,6 @@ window.APP_CONFIG = {
   appName: "La Popote des Copains",
   supabaseUrl: "https://cczgjuhkmpxrzjjjvugw.supabase.co",
   supabaseAnonKey: "sb_publishable_TdmgFRH00T33W2ig9beLbw_5NnwPIrF", // clé publique, sans danger côté navigateur grâce aux règles RLS
+  aiImport: false,       // false = import gratuit (texte collé, sans photo) ; true = photo + texte via l'API Claude (payant)
   allowSignup: true,      // false = masque « Créer un compte » (membres invités uniquement)
 };

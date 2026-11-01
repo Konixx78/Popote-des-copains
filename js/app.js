@@ -73,7 +73,7 @@ function parseNumber(str) {
 
 function parseIngredientLine(line) {
   let s = String(line || "").replace(/^\s*[-•*·–]\s*/, "").replace(/\s+/g, " ").trim();
-  s = s.replace(/^(une?|deux|trois|quatre|cinq|six)\s+(?=\S)/i, (w) => ({ un: "1 ", une: "1 ", deux: "2 ", trois: "3 ", quatre: "4 ", cinq: "5 ", six: "6 " })[w.trim().toLowerCase()]);
+  s = s.replace(/^(une?|deux|trois|quatre|cinq|six)\s+(?=\S)(?!peu\b)/i, (w) => ({ un: "1 ", une: "1 ", deux: "2 ", trois: "3 ", quatre: "4 ", cinq: "5 ", six: "6 " })[w.trim().toLowerCase()]);
   if (!s) return null;
   const numRe = /^(\d+\s+\d+\/\d+|\d+\/\d+|\d+\s*[½¼¾⅓⅔⅛]|[½¼¾⅓⅔⅛]|\d+(?:[.,]\d+)?)(?:\s*(?:à|-|ou)\s*(\d+(?:[.,]\d+)?))?\s*/;
   const m = s.match(numRe);
@@ -278,6 +278,47 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, de cette forme
 }
 Règles : une ligne par ingrédient avec la quantité en tête quand il y en a une ; ajoute " (facultatif)" à la fin des ingrédients indiqués comme facultatifs ; si les ingrédients sont répartis en parties (ex. « Vinaigrette », « Pâte »), insère dans "ingredients" une ligne "# Vinaigrette" avant ceux de cette partie ; les ingrédients cités seulement dans une astuce ou une variante vont dans "tip_ingredients" (pas dans "ingredients"), les simples idées d'accompagnement n'y vont pas ; une étape = une action ou un petit groupe d'actions ;
 garde les durées et températures dans le texte des étapes ; si la préparation a plusieurs parties (ex. « La pâte », « La sauce »), insère dans "steps" une ligne de sous-titre commençant par "# " (ex. "# La sauce") avant les étapes de cette partie ; si une valeur numérique est inconnue, mets null ; 2 à 4 tags utiles (ex. "rapide", "végétarien", "four", "fêtes").`;
+
+/* Lecture gratuite d'un texte collé, sans IA : repère titre, personnes, Ingrédients, Préparation, Astuce */
+function localParseRecipe(text) {
+  const lines = String(text || "").split(/\r?\n/).map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
+  const out = { title: "", servings: null, ingredients: [], steps: [], tips: [], tip_ingredients: [] };
+  const bullet = /^\s*(?:[-–—•*·]|\d+\s*[.)])\s*/;
+  const isHeader = (l) => !bullet.test(l) && l.trim().length <= 60 && !/[.;]\s*\S/.test(l.trim().replace(/[.:]$/, ""));
+  let mode = "start", tipList = false;
+  for (const raw of lines) {
+    const l = raw.trim();
+    const n = norm(l);
+    const serv = n.match(/(\d+)\s*(?:a\s*\d+\s*)?(?:personnes|pers\b)/);
+    if (serv && !out.servings) out.servings = +serv[1];
+    // « Astuce : texte… » sur une seule ligne
+    const inlineTip = l.match(/^(astuce|conseil|remarque|note|résultat attendu|resultat attendu|résultat|accompagnement)\s*:\s*(.+)$/i);
+    if (inlineTip && mode !== "ing") { out.tips.push(l); mode = "tips"; continue; }
+    // Sous-points indentés d'une étape : rattachés à l'étape précédente
+    if (mode === "steps" && /^\s{2,}[-–—•*·]/.test(raw) && out.steps.length) { out.steps[out.steps.length - 1] += " " + l.replace(bullet, "").trim(); continue; }
+    if (isHeader(l)) {
+      const etape = l.match(/^[ée]tape\s*\d+\s*[—–:-]\s*(.+)$/i);
+      if (etape) { mode = "steps"; out.steps.push("# " + etape[1].replace(/[:.]$/, "")); continue; }
+      if (/^ingredients?\b/.test(n)) { mode = "ing"; continue; }
+      if (/^(preparation|procedure|etapes?|recette|deroulement|methode)\b/.test(n)) { mode = "steps"; continue; }
+      if (/^(astuce|variante|conseil|accompagnement|resultat|remarque|note|bon appetit|procede adapte)/.test(n)) {
+        mode = "tips"; tipList = /variante|ajouter/.test(n);
+        if (!/bon appetit/.test(n)) out.tips.push(l.replace(/[.:]$/, "") + " :"); continue;
+      }
+      if (mode === "start" && !out.title) { out.title = l.replace(/\s*\(?\d+\s*(?:a\s*\d+\s*)?personnes?\)?/i, "").replace(/[\s.–—-]+$/, ""); continue; }
+      if (mode === "ing" && !serv) { out.ingredients.push("# " + l.replace(/[:.]$/, "")); continue; }
+      if (mode === "steps") { out.steps.push("# " + l.replace(/^[ée]tape\s*\d+\s*[—–-]\s*/i, "").replace(/[:.]$/, "")); continue; }
+    }
+    if (serv && mode !== "steps" && mode !== "tips" && l.length < 50 && !bullet.test(l)) continue;
+    const item = l.replace(bullet, "").trim();
+    if (!item) continue;
+    if (mode === "ing") out.ingredients.push(item);
+    else if (mode === "steps") out.steps.push(item);
+    else if (mode === "tips") { out.tips.push(item); if (tipList && bullet.test(l)) out.tip_ingredients.push(item.replace(/[,.]$/, "")); }
+    else if (!out.title) out.title = item;
+  }
+  return { ...out, tips: out.tips.join("\n"), tip_ingredients: [] };
+}
 
 function normalizeParsed(o) {
   const cat = CATEGORIES.find((c) => norm(c) === norm(o.category)) || "Plat";
@@ -804,8 +845,8 @@ function viewEdit() {
 function viewAdd() {
   const c = (act, icon, title, sub) => `<button class="choice" data-act="${act}"><span class="ic">${icon}</span><span><b>${title}</b><span>${sub}</span></span></button>`;
   return `${topbar("Ajouter une recette")}<main class="wrap"><div class="add-choices">
-    ${c("addphoto", ICONS.camera, "Depuis une photo", "Fiche manuscrite, page de livre, capture d'écran : la recette est lue et remplie pour toi.")}
-    ${c("addtext", ICONS.text, "Coller un texte", "Un message, une note, une page web copiée : tout est rangé en ingrédients et étapes.")}
+    ${CFG.aiImport === false ? "" : c("addphoto", ICONS.camera, "Depuis une photo", "Fiche manuscrite, page de livre, capture d'écran : la recette est lue et remplie pour toi.")}
+    ${c("addtext", ICONS.text, "Coller un texte", CFG.aiImport === false ? "Colle une recette avec « Ingrédients » et « Préparation » : la fiche se remplit toute seule." : "Un message, une note, une page web copiée : tout est rangé en ingrédients et étapes.")}
     ${c("addmanual", ICONS.pen, "Saisir à la main", "Remplir la fiche toi-même.")}
   </div></main>${tabbar()}`;
 }
@@ -1155,7 +1196,7 @@ async function runImport() {
   state.importBusy = true; state.importError = ""; render();
   try {
     if (state.importTab === "photo") for (const f of state.importFiles) images.push(await resizeImage(f.file, 1568, 0.85));
-    const raw = await api.parseRecipe({ text: state.importTab === "text" ? state.importText : "", images });
+    const raw = CFG.aiImport === false ? localParseRecipe(state.importText) : await api.parseRecipe({ text: state.importTab === "text" ? state.importText : "", images });
     const parsed = normalizeParsed(raw);
     if (!parsed.title && !parsed.ingredients.length) throw new Error("Je n'ai pas trouvé de recette. Essaie avec une photo plus nette.");
     state.draft = { ...blankDraft(), ...parsed, _fromImport: true };
@@ -1178,6 +1219,6 @@ async function boot() {
   state.loading = false;
   render();
 }
-window.Carnet = { parseIngredientLine, ingredientText, niceNumber, detectTimers, normalizeParsed };
+window.Carnet = { localParseRecipe, parseIngredientLine, ingredientText, niceNumber, detectTimers, normalizeParsed };
 boot();
 })();
